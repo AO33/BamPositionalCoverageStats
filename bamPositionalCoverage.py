@@ -74,7 +74,7 @@ def divideWorkLoad(items,proc=1):
 	if proc == 1:
 		return items
 	######################################
-	baskets = [ [] for i in xrange(proc) ]
+	baskets = [ [] for i in range(proc) ]
 	for i,item in enumerate(items):
 		baskets[ i % proc ].append(item)
 	##############################
@@ -94,15 +94,15 @@ def grabCoverageSNPs(bedFile,samFileLocation,proc=1):
 		bedLineLists = divideWorkLoad(readBedFileToMem(bedFile),proc=proc)
 		output = mp.Queue()
 		pool = mp.Pool(processes=proc)
-		print "Workload divided"
-		print "Calculating position stats across "+str(proc)+" cores..."
+		print("Workload divided")
+		print("Calculating position stats across "+str(proc)+" cores...")
 		results = [ pool.apply_async(reportPositionStats,args=(bedLines,samFileLocation)) for bedLines in bedLineLists ]
 		output = [ p.get() for p in results ]
 	else:
 		output = [ [pObj] for pObj in reportPositionStats(readBedFileToMem(bedFile),samFileLocation) ]
 	###################################
-	print "Positional stats calculated"
-	print "Ordering output..."
+	print("Positional stats calculated")
+	print("Ordering output...")
 	### Now we want to order our positionObjects by chromosome and position (smalles position first) ###
     ### This just makes the output easier to understand/follow instead of it just being essentially random ###
 	chrDict = {}
@@ -117,7 +117,7 @@ def grabCoverageSNPs(bedFile,samFileLocation,proc=1):
 		chrDict[c] = sorted(chrDict[c],key=lambda posObj: posObj.position)
 	######################
 	stopTime = time.time()
-	print "RunTime:"+'\t'+str(stopTime-startTime)
+	print("RunTime:"+'\t'+str(stopTime-startTime))
 	return chrDict
 
 def writePositionsToFile(outFile,chrDict,chromosomeOrderList="NA"):
