@@ -8,14 +8,13 @@ import multiprocessing as mp
 ### Code ###
 class Position:
 	''' This is a class that is used to calculate alignment statistics over a specified position in a bam file.
-		It is suppose to be initiated by reading a bedFile where the reference and alternate alleles are alread specified.
+		It is initiated by reading a BED file, with the reference allele in column 4.
 		There are two methods assosicated with this class that will get the positional info over the specified position,
 		and another that will format a string for output to a tsv file.'''
-	def __init__(self,chromosome,position,ref,alt):
+	def __init__(self,chromosome,position,ref):
 		self.chromosome = chromosome
 		self.position = position
 		self.ref = ref
-		self.alt = alt
 	##################################
 	def getInfo(self,samFile,mapQ=60):
 		self.mappingQuality = mapQ
@@ -52,8 +51,8 @@ def reportPositionStats(ls,samMan,mapQ=60):
 	returnArray = []
 	for line in ls:
 		cols = line.strip('\r').strip('\n').split('\t')
-		chrom,start,ref,alt = cols[0],int(cols[1]),cols[3],cols[4]
-		posMan = Position(chrom,start,ref,alt)
+		chrom,start,ref = cols[0],int(cols[1]),cols[3]
+		posMan = Position(chrom,start,ref)
 		posMan.getInfo(samFile,mapQ=mapQ)
 		returnArray.append(posMan)
 	###############
@@ -74,7 +73,7 @@ def divideWorkLoad(items,proc=1):
 	if proc == 1:
 		return items
 	######################################
-	baskets = [ [] for i in xrange(proc) ]
+	baskets = [ [] for i in range(proc) ]
 	for i,item in enumerate(items):
 		baskets[ i % proc ].append(item)
 	##############################
@@ -86,7 +85,7 @@ def grabCoverageSNPs(bedFile,samFileLocation,proc=1):
 		Uses multiprocessing library to distribute the work load evenly among cores.
 		Runtime is essentially linear with respect to the number of processors which is ideal.
 		Will write out the results to a file.
-		bedFile = fullFilePathToBedFile. In format of chromosome'\t'position'\t'position'\t'referenceAllele'\t'alternateAllele
+		bedFile = fullFilePathToBedFile. In format of chromosome'\t'position'\t'position'\t'referenceAllele'
 		samFileLocation = fullFilePathToBamFile
 		I refer to the input bam file as samFileLocation because pysam opens the bam file as a sam essentially.'''
 	startTime = time.time()
@@ -94,15 +93,15 @@ def grabCoverageSNPs(bedFile,samFileLocation,proc=1):
 		bedLineLists = divideWorkLoad(readBedFileToMem(bedFile),proc=proc)
 		output = mp.Queue()
 		pool = mp.Pool(processes=proc)
-		print "Workload divided"
-		print "Calculating position stats across "+str(proc)+" cores..."
+		print("Workload divided")
+		print("Calculating position stats across "+str(proc)+" cores...")
 		results = [ pool.apply_async(reportPositionStats,args=(bedLines,samFileLocation)) for bedLines in bedLineLists ]
 		output = [ p.get() for p in results ]
 	else:
 		output = [ [pObj] for pObj in reportPositionStats(readBedFileToMem(bedFile),samFileLocation) ]
 	###################################
-	print "Positional stats calculated"
-	print "Ordering output..."
+	print("Positional stats calculated")
+	print("Ordering output...")
 	### Now we want to order our positionObjects by chromosome and position (smalles position first) ###
     ### This just makes the output easier to understand/follow instead of it just being essentially random ###
 	chrDict = {}
@@ -117,7 +116,7 @@ def grabCoverageSNPs(bedFile,samFileLocation,proc=1):
 		chrDict[c] = sorted(chrDict[c],key=lambda posObj: posObj.position)
 	######################
 	stopTime = time.time()
-	print "RunTime:"+'\t'+str(stopTime-startTime)
+	print("RunTime:"+'\t'+str(stopTime-startTime))
 	return chrDict
 
 def writePositionsToFile(outFile,chrDict,chromosomeOrderList="NA"):
@@ -143,7 +142,7 @@ if __name__ == "__main__":
 	###############
 	def mm():
 		parser = argparse.ArgumentParser(description='Calculates coverage stats from an alignment file (bam format) for specified positions')
-		parser.add_argument("-bedFile",help="Standard bed file format with the fourth and fiftch columns being referenceAllele and alternateAllele respectively",required=True,type=str)
+		parser.add_argument("-bedFile",help="BED3 format, with the addition of the reference allele in column 4",required=True,type=str)
 		parser.add_argument("-outFile",help="OutPut file to write results to", required=True, type=str)
 		parser.add_argument("-bamFile",help="Location of alignment file in bam format. Note, it needs to be indexed first with something like samtools index.",required=True,type=str)
 		parser.add_argument("-proc",help="Number of cores to use. Runs ~linearly with the number of cores give. Drastically speeds up compute time for large data sets",required=True,type=int)
